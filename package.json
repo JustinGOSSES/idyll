@@ -31,7 +31,7 @@
     "babyparse": "^0.4.6",
     "brfs": "^1.4.3",
     "browserify-css": "^0.10.0",
-    "budo": "^9.4.7",
+    "budo": "^10.0.3",
     "change-case": "^3.0.1",
     "compression": "^1.6.2",
     "envify": "^4.0.0",

@@ -217,6 +217,7 @@ const idyll = (inputPath, opts, cb) => {
   }
 
   const start = () => {
+    let wss, app;
     const watchedFiles = CSS_INPUT ? [IDL_FILE, CSS_INPUT] : [IDL_FILE];
     watch(watchedFiles, (filename) => {
       if (filename.indexOf('.css') !== -1) {
@@ -231,6 +232,9 @@ const idyll = (inputPath, opts, cb) => {
             writeAST(ast);
             writeTemplates(ast);
           } catch(err) {
+            sendClientPopup({
+              message: err.message
+            });
             console.log(err.message);
           }
         })
@@ -238,7 +242,7 @@ const idyll = (inputPath, opts, cb) => {
 
     });
 
-    budo(path.resolve(path.join(__dirname, 'client', 'live.js')), {
+    app = budo(path.resolve(path.join(__dirname, 'client', 'live.js')), {
       live: true,
       open: true,
       forceDefaultIndex: true,
@@ -257,6 +261,38 @@ const idyll = (inputPath, opts, cb) => {
         ]
       }
     });
+
+    // enable LiveReload client instrumentation
+    app.live({
+      // If we are making frequent changes to ./live.js
+      // Then we should set this to false so we don't need to
+      // re-start budo each time. :)
+      cache: true,
+      // This is only needed to debug our LiveReload client
+      // e.g. as above, you may want this to true if you're changing it!
+      debug: false,
+      // Expose LiveReload client to window.require('budo-livereload')
+      expose: true,
+      // Additional script(s) to include after the LiveReload client
+      include: require.resolve('./client/debug.js')
+    });
+
+    // get socket server
+    app.on('connect', ev => {
+      wss = ev.webSocketServer;
+    });
+
+    // reload JS bundle
+    app.on('pending', () => app.reload());
+
+    // send a message to all currently connected clients
+    function sendClientPopup (data) {
+      if (!wss) return;
+      var message = JSON.stringify(data);
+      wss.clients.forEach(function (socket) {
+        socket.send(message);
+      });
+    }
   }
 
   const idlInput = fs.readFileSync(IDL_FILE, 'utf8');
